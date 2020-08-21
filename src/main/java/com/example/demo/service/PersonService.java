@@ -1,9 +1,13 @@
 package com.example.demo.service;
 
 import com.example.demo.models.Person;
+import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
+import org.apache.ignite.IgniteTransactions;
+import org.apache.ignite.transactions.Transaction;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +16,9 @@ import java.util.List;
 public class PersonService {
 
     private IgniteCache<Integer, Person> personIgniteCache;
+
+    @Autowired
+    private Ignite ignite;
 
     @Autowired
     public PersonService(IgniteCache<Integer, Person> personIgniteCache) {
@@ -26,10 +33,12 @@ public class PersonService {
         return person;
     }
 
+    @Transactional(transactionManager = "transactionManager")
     public Person getPerson(int id) {
         return (Person) personIgniteCache.get(id);
     }
 
+    @Transactional(transactionManager = "transactionManager")
     public Person createPerson(Person person) {
         return personIgniteCache.getAndPut((int) person.getId(), person);
     }

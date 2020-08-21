@@ -7,32 +7,29 @@ import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteException;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.cache.CacheAtomicityMode;
-import org.apache.ignite.configuration.CacheConfiguration;
-import org.apache.ignite.configuration.DataRegionConfiguration;
-import org.apache.ignite.configuration.DataStorageConfiguration;
-import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.cache.CacheMode;
+import org.apache.ignite.configuration.*;
+import org.apache.ignite.transactions.TransactionConcurrency;
+import org.apache.ignite.transactions.TransactionIsolation;
+import org.apache.ignite.transactions.spring.SpringTransactionManager;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.DependsOn;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import javax.cache.configuration.Factory;
 import javax.cache.configuration.FactoryBuilder;
 
 @Configuration
+@EnableTransactionManagement
 public class IgniteCacheConfiguration {
-    @Bean
+    @Bean("igniteConfiguration")
     public IgniteConfiguration igniteConfiguration() {
         IgniteConfiguration igniteConfiguration = new IgniteConfiguration();
         igniteConfiguration.setIgniteInstanceName("my-ignite");
         igniteConfiguration.setClientMode(false);
-        igniteConfiguration.setMetricsLogFrequency(0);
-        igniteConfiguration.setQueryThreadPoolSize(2);
-        igniteConfiguration.setDataStreamerThreadPoolSize(1);
-        igniteConfiguration.setManagementThreadPoolSize(2);
-        igniteConfiguration.setPublicThreadPoolSize(2);
-        igniteConfiguration.setSystemThreadPoolSize(2);
-        igniteConfiguration.setRebalanceThreadPoolSize(1);
-        igniteConfiguration.setAsyncCallbackPoolSize(2);
-        igniteConfiguration.setPeerClassLoadingEnabled(false);
+
 
 //
 //        DataRegionConfiguration dataRegionConfiguration = new DataRegionConfiguration();
@@ -43,12 +40,20 @@ public class IgniteCacheConfiguration {
 //
 //        igniteConfiguration.setDataStorageConfiguration(dataStorageConfiguration);
 
+//        TransactionConfiguration txConfig = new TransactionConfiguration();
+//        txConfig.setTxManagerFactory(FactoryBuilder.factoryOf(SpringTransactionManager.class));
+//        txConfig.setDefaultTxConcurrency(TransactionConcurrency.OPTIMISTIC);
+//        txConfig.setDefaultTxIsolation(TransactionIsolation.SERIALIZABLE);
+
+//        igniteConfiguration.setTransactionConfiguration(txConfig);
+
 
         CacheConfiguration cacheConfiguration = new CacheConfiguration();
         cacheConfiguration.setName("personCache");
         cacheConfiguration.setReadThrough(true);
         cacheConfiguration.setWriteThrough(true);
         cacheConfiguration.setBackups(0);
+        cacheConfiguration.setCacheMode(CacheMode.REPLICATED);
         cacheConfiguration.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
 
 
@@ -67,13 +72,22 @@ public class IgniteCacheConfiguration {
 
     @Bean(destroyMethod = "close")
     Ignite ignite(IgniteConfiguration igniteConfiguration) throws IgniteException {
-        final Ignite start = Ignition.start(igniteConfiguration);
+        final Ignite start = Ignition.getOrStart(igniteConfiguration);
         return start;
     }
 
-    @Bean
+    @Bean("personIgniteCache")
     public IgniteCache<Integer, Person> personIgniteCache(Ignite ignite) {
         return ignite.getOrCreateCache("personCache");
+    }
+
+    @Bean
+    @Qualifier(value = "transactionManager")
+    public SpringTransactionManager transactionManager() {
+        SpringTransactionManager transactionManager = new SpringTransactionManager();
+        transactionManager.setIgniteInstanceName("my-ignite");
+        transactionManager.setTransactionConcurrency(TransactionConcurrency.OPTIMISTIC);
+        return transactionManager;
     }
 
 }
